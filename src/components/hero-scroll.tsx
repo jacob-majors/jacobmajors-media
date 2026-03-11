@@ -6,7 +6,11 @@ import gsap from "gsap";
 import ScrollTrigger from "gsap/ScrollTrigger";
 import { HERO_PHOTOS } from "@/data/portfolio";
 
-export function HeroScroll() {
+type SlideData = { url: string; headline: string; sub: string };
+
+export function HeroScroll({ dbSlides }: { dbSlides?: SlideData[] }) {
+  const slides: SlideData[] = dbSlides && dbSlides.length > 0 ? dbSlides : HERO_PHOTOS;
+
   const containerRef = useRef<HTMLDivElement>(null);
   const slidesRef = useRef<HTMLDivElement[]>([]);
   const textsRef = useRef<HTMLDivElement[]>([]);
@@ -17,7 +21,7 @@ export function HeroScroll() {
     gsap.registerPlugin(ScrollTrigger);
 
     const ctx = gsap.context(() => {
-      const total = HERO_PHOTOS.length;
+      const total = slides.length;
 
       // Initial state — first slide visible, rest hidden
       slidesRef.current.forEach((slide, i) => {
@@ -35,7 +39,7 @@ export function HeroScroll() {
         onUpdate: (self) => {
           const p = self.progress;
 
-          HERO_PHOTOS.forEach((_, i) => {
+          slides.forEach((_, i) => {
             const slide = slidesRef.current[i];
             const text = textsRef.current[i];
             if (!slide || !text) return;
@@ -102,14 +106,14 @@ export function HeroScroll() {
     }, containerRef);
 
     return () => ctx.revert();
-  }, []);
+  }, [slides]);
 
   return (
-    <div ref={containerRef} style={{ height: `${HERO_PHOTOS.length * 120}vh` }} className="relative">
+    <div ref={containerRef} style={{ height: `${slides.length * 120}vh` }} className="relative">
       <div className="sticky top-0 h-screen w-full overflow-hidden">
 
         {/* Image layers */}
-        {HERO_PHOTOS.map((slide, i) => (
+        {slides.map((slide, i) => (
           <div
             key={i}
             ref={(el) => { if (el) slidesRef.current[i] = el; }}
@@ -128,7 +132,7 @@ export function HeroScroll() {
         ))}
 
         {/* Text layers */}
-        {HERO_PHOTOS.map((slide, i) => (
+        {slides.map((slide, i) => (
           <div
             key={i}
             ref={(el) => { if (el) textsRef.current[i] = el; }}
@@ -157,7 +161,7 @@ export function HeroScroll() {
 
         {/* Progress dots */}
         <div className="absolute right-7 top-1/2 -translate-y-1/2 flex flex-col gap-2.5">
-          {HERO_PHOTOS.map((_, i) => (
+          {slides.map((_, i) => (
             <div key={i} className="w-[3px] h-[3px] rounded-full bg-white/35" />
           ))}
         </div>

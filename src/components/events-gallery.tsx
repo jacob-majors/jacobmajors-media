@@ -77,7 +77,7 @@ export function EventsGallery() {
                       src={event.coverPhoto}
                       alt={event.title}
                       fill
-                      className="object-cover transition-transform duration-700 group-hover:scale-110"
+                      className="object-cover transition-transform duration-700 group-hover:scale-110 will-change-transform"
                       sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
                     />
                     {/* Overlay */}

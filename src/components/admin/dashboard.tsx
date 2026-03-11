@@ -4,8 +4,9 @@ import { useState } from "react";
 import { PhotoUploadForm } from "./photo-upload-form";
 import { ProjectForm } from "./project-form";
 import { BlogPostForm } from "./blog-post-form";
+import { HeroSlidesForm } from "./hero-slides-form";
 
-const TABS = ["Photos", "Projects", "Blog"] as const;
+const TABS = ["Hero", "Photos", "Projects", "Blog"] as const;
 type Tab = typeof TABS[number];
 
 export function AdminDashboard() {
@@ -33,6 +34,7 @@ export function AdminDashboard() {
         ))}
       </div>
 
+      {tab === "Hero" && <HeroSlidesForm />}
       {tab === "Photos" && <PhotoUploadForm />}
       {tab === "Projects" && <ProjectForm />}
       {tab === "Blog" && <BlogPostForm />}

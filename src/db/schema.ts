@@ -28,6 +28,16 @@ export const projects = sqliteTable("projects", {
   publishedAt: text("published_at").default(sql`(datetime('now'))`),
 });
 
+export const heroSlides = sqliteTable("hero_slides", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  cloudinaryId: text("cloudinary_id").notNull(),
+  cloudinaryUrl: text("cloudinary_url").notNull(),
+  headline: text("headline").notNull(),
+  sub: text("sub").notNull(),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: text("created_at").default(sql`(datetime('now'))`),
+});
+
 export const blogPosts = sqliteTable("blog_posts", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   slug: text("slug").notNull().unique(),

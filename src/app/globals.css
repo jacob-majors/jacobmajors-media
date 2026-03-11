@@ -42,3 +42,21 @@ body {
   background: var(--accent);
   border-radius: 2px;
 }
+
+/* GPU-accelerate all hover-animated images and buttons */
+img,
+button,
+a {
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Smoother default transition for all interactive elements */
+a,
+button {
+  transition-timing-function: cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+
+/* Prevent layout shift on image load */
+img {
+  content-visibility: auto;
+}

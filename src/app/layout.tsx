@@ -3,6 +3,7 @@ import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
 import "./globals.css";
 import { Nav } from "@/components/nav";
+import { PageTransition } from "@/components/page-transition";
 
 export const metadata: Metadata = {
   title: {
@@ -26,7 +27,7 @@ export default function RootLayout({
     <html lang="en" className={`${GeistSans.variable} ${GeistMono.variable}`}>
       <body>
         <Nav />
-        {children}
+        <PageTransition>{children}</PageTransition>
       </body>
     </html>
   );
