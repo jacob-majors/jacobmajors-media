@@ -24,7 +24,6 @@ function SlideCard({ slide, index, onRefresh }: { slide: Slide; index: number; o
   const [saved, setSaved] = useState(false);
   const [replacing, setReplacing] = useState(false);
   const [previewUrl, setPreviewUrl] = useState(slide.cloudinaryUrl);
-  const [pendingUpload, setPendingUpload] = useState<UploadInfo | null>(null);
 
   const textChanged = headline !== slide.headline || sub !== slide.sub;
 
@@ -40,7 +39,6 @@ function SlideCard({ slide, index, onRefresh }: { slide: Slide; index: number; o
   async function handleReplace(info: UploadInfo) {
     setReplacing(true);
     setPreviewUrl(info.secure_url);
-    setPendingUpload(info);
     await replaceHeroSlide(slide.id, {
       cloudinaryId: info.public_id,
       cloudinaryUrl: info.secure_url,
@@ -48,7 +46,6 @@ function SlideCard({ slide, index, onRefresh }: { slide: Slide; index: number; o
       sub,
     });
     setReplacing(false);
-    setPendingUpload(null);
     onRefresh();
   }
 

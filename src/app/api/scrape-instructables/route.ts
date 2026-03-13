@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
     let description = "";
     let longDescription = "";
     let coverUrl = "";
-    let tags: string[] = [];
+    const tags: string[] = [];
     const photos: string[] = [];
 
     if (stateMatch) {

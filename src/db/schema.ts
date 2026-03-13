@@ -38,6 +38,13 @@ export const heroSlides = sqliteTable("hero_slides", {
   createdAt: text("created_at").default(sql`(datetime('now'))`),
 });
 
+// Generic key-value store for editable site content (About page, etc.)
+export const siteContent = sqliteTable("site_content", {
+  key: text("key").primaryKey(),
+  value: text("value").notNull(),
+  updatedAt: text("updated_at").default(sql`(datetime('now'))`),
+});
+
 export const blogPosts = sqliteTable("blog_posts", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   slug: text("slug").notNull().unique(),
