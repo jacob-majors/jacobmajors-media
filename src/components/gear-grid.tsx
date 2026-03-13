@@ -209,13 +209,15 @@ const GEAR: GearItem[] = [
   },
 ];
 
-// Apply Cloudinary background removal to product images
+// Trim solid-color (white/light) backgrounds from product images using Cloudinary e_trim.
+// Works on free plans. For images with complex backgrounds, enable the Cloudinary
+// AI Background Removal add-on and swap e_trim for e_background_removal.
 function withBgRemoval(url: string): string {
   if (url.includes("/image/upload/")) {
-    return url.replace("/image/upload/", "/image/upload/e_background_removal,f_png/");
+    return url.replace("/image/upload/", "/image/upload/e_trim:color_white:20,f_png/");
   }
   if (url.includes("/image/fetch/")) {
-    return url.replace("/image/fetch/", "/image/fetch/e_background_removal,f_png,");
+    return url.replace("/image/fetch/", "/image/fetch/e_trim:color_white:20,f_png,");
   }
   return url;
 }
