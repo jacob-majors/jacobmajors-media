@@ -6,7 +6,7 @@ import { saveBlogPost } from "@/app/actions/blog";
 
 export function BlogPostForm() {
   const [uploaded, setUploaded] = useState<{ public_id: string; secure_url: string } | null>(null);
-  const [form, setForm] = useState({ title: "", slug: "", excerpt: "", content: "", published: false });
+  const [form, setForm] = useState({ title: "", slug: "", excerpt: "", content: "", category: "blog", published: false });
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
 
@@ -26,7 +26,7 @@ export function BlogPostForm() {
     setSaving(false);
     setSuccess(true);
     setTimeout(() => setSuccess(false), 3000);
-    setForm({ title: "", slug: "", excerpt: "", content: "", published: false });
+    setForm({ title: "", slug: "", excerpt: "", content: "", category: "blog", published: false });
     setUploaded(null);
   }
 
@@ -34,6 +34,23 @@ export function BlogPostForm() {
     <div className="space-y-8">
       <h2 className="text-white text-2xl font-light">Write Post</h2>
       <div className="space-y-4">
+        {/* Category selector */}
+        <div className="flex gap-3">
+          {(["blog", "trip"] as const).map((cat) => (
+            <button
+              key={cat}
+              onClick={() => setForm({ ...form, category: cat })}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                form.category === cat
+                  ? "bg-[#c8a96e] text-black"
+                  : "border border-[#333] text-[#666] hover:border-[#c8a96e] hover:text-white"
+              }`}
+            >
+              {cat === "blog" ? "Blog Post" : "Trip Report"}
+            </button>
+          ))}
+        </div>
+
         <input
           type="text"
           placeholder="Title"

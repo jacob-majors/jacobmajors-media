@@ -51,6 +51,7 @@ export const blogPosts = sqliteTable("blog_posts", {
   title: text("title").notNull(),
   excerpt: text("excerpt"),
   content: text("content").notNull(),
+  category: text("category").notNull().default("blog"), // 'blog' | 'trip'
   coverCloudinaryId: text("cover_cloudinary_id"),
   coverCloudinaryUrl: text("cover_cloudinary_url"),
   published: integer("published", { mode: "boolean" }).default(false),

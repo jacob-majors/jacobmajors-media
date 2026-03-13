@@ -12,7 +12,7 @@ const DEFAULTS = {
   headline: "Jacob Majors",
   bio1: "I'm a photographer and engineer based in Sonoma County, California. I shoot action sports — mountain bike races, basketball, soccer, and climbing — capturing the moments that happen in fractions of a second.",
   bio2: "On the engineering side, I build things. From 3D-printed accessibility hardware to full-stack web applications, I care about making things that actually work for real people.",
-  bio3: "This site is a living record of both — the photos I take, the projects I build, and the ideas I'm working through.",
+  bio3: "This site is a living record of it all — the photos I take, the projects I build, the places I travel, and the ideas I am working through.",
   col1Label: "Photography",
   col1Text: "Action sports, mountain biking, basketball, soccer, climbing.",
   col2Label: "Engineering",

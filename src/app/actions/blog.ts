@@ -9,6 +9,7 @@ export async function saveBlogPost(data: {
   slug: string;
   excerpt?: string;
   content: string;
+  category?: string;
   coverCloudinaryId?: string;
   coverCloudinaryUrl?: string;
   published: boolean;

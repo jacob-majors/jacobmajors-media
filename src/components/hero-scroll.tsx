@@ -161,14 +161,6 @@ export function HeroScroll({ dbSlides, isAdmin }: { dbSlides?: SlideData[]; isAd
 
   return (
     <div ref={containerRef} style={{ height: `${slides.length * 120}vh` }} className="relative">
-      {/* Admin bar */}
-      {isAdmin && (
-        <div className="fixed top-16 left-0 right-0 z-50 flex justify-center pointer-events-none">
-          <div className="bg-[#c8a96e]/90 backdrop-blur-sm text-black text-xs tracking-widest uppercase px-4 py-2 rounded-full font-medium pointer-events-auto">
-            Admin — hover any slide to replace
-          </div>
-        </div>
-      )}
 
       <div className="sticky top-0 h-screen w-full overflow-hidden">
         {/* Image layers */}
