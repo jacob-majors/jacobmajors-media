@@ -1,24 +1,38 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { X } from "lucide-react";
 import { EVENTS, CATEGORY_LABELS, type PortfolioEvent } from "@/data/portfolio";
 
-const CATEGORIES = ["All", "bike-races", "basketball", "soccer", "climbing"] as const;
+type LacrossePhoto = { id: number; cloudinaryUrl: string; title: string; cloudinaryId: string };
 
-export function EventsGallery() {
+const CATEGORIES = ["All", "lacrosse", "bike-races", "basketball", "soccer", "climbing"] as const;
+const ALL_LABELS: Record<string, string> = {
+  ...CATEGORY_LABELS,
+  lacrosse: "Lacrosse",
+};
+
+export function EventsGallery({ lacrossePhotos = [] }: { lacrossePhotos?: LacrossePhoto[] }) {
   const [activeCategory, setActiveCategory] = useState<string>("All");
   const [openEvent, setOpenEvent] = useState<PortfolioEvent | null>(null);
+  const [openLacrosse, setOpenLacrosse] = useState(false);
 
-  const filtered =
-    activeCategory === "All"
-      ? EVENTS
+  // Jump to lacrosse section if URL has #lacrosse
+  useEffect(() => {
+    if (window.location.hash === "#lacrosse") {
+      setActiveCategory("lacrosse");
+    }
+  }, []);
+
+  const showLacrosse = activeCategory === "All" || activeCategory === "lacrosse";
+  const filteredEvents =
+    activeCategory === "All" || activeCategory === "lacrosse"
+      ? activeCategory === "lacrosse" ? [] : EVENTS
       : EVENTS.filter((e) => e.category === activeCategory);
 
-  // Group by subcategory (or category) for display
-  const grouped = filtered.reduce<Record<string, PortfolioEvent[]>>((acc, event) => {
+  const grouped = filteredEvents.reduce<Record<string, PortfolioEvent[]>>((acc, event) => {
     const key = event.subcategory ?? CATEGORY_LABELS[event.category];
     if (!acc[key]) acc[key] = [];
     acc[key].push(event);
@@ -28,7 +42,7 @@ export function EventsGallery() {
   return (
     <>
       {/* Category filter */}
-      <div className="px-6 pb-12 max-w-7xl mx-auto">
+      <div className="px-6 pb-12 max-w-7xl mx-auto" id="lacrosse">
         <div className="flex flex-wrap gap-3">
           {CATEGORIES.map((cat) => (
             <button
@@ -40,15 +54,63 @@ export function EventsGallery() {
                   : "border-[#333] text-[#666] hover:border-[#555] hover:text-[#999]"
               }`}
             >
-              {cat === "All" ? "All" : CATEGORY_LABELS[cat]}
+              {cat === "All" ? "All" : ALL_LABELS[cat] ?? cat}
             </button>
           ))}
         </div>
       </div>
 
-      {/* Events grouped by subcategory */}
       <div className="px-6 pb-32 max-w-7xl mx-auto space-y-20">
         <AnimatePresence mode="wait">
+          {/* Lacrosse section — from DB */}
+          {showLacrosse && lacrossePhotos.length > 0 && (
+            <motion.section
+              key="lacrosse"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.5 }}
+            >
+              <div className="flex items-center gap-6 mb-8">
+                <h2 className="text-[#c8a96e] text-xs tracking-[0.3em] uppercase">Lacrosse</h2>
+                <div className="flex-1 h-px bg-[#1a1a1a]" />
+                <span className="text-[#444] text-xs">{lacrossePhotos.length} photos</span>
+              </div>
+
+              {/* Mosaic preview — click opens full gallery */}
+              <div
+                className="grid grid-cols-2 md:grid-cols-4 gap-3 cursor-pointer group"
+                onClick={() => setOpenLacrosse(true)}
+              >
+                {lacrossePhotos.slice(0, 8).map((photo, i) => (
+                  <motion.div
+                    key={photo.id}
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.4, delay: i * 0.05 }}
+                    className={`relative overflow-hidden rounded-xl ${i === 0 ? "col-span-2 row-span-2 aspect-[4/3]" : "aspect-square"}`}
+                  >
+                    <Image
+                      src={photo.cloudinaryUrl}
+                      alt={photo.title}
+                      fill
+                      className="object-cover transition-transform duration-700 group-hover:scale-105 will-change-transform"
+                      sizes="(max-width: 640px) 50vw, 25vw"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-60 group-hover:opacity-80 transition-opacity duration-300" />
+                  </motion.div>
+                ))}
+                {lacrossePhotos.length > 8 && (
+                  <div className="aspect-square rounded-xl bg-[#111] border border-[#222] flex flex-col items-center justify-center gap-1">
+                    <span className="text-white text-xl font-light">+{lacrossePhotos.length - 8}</span>
+                    <span className="text-[#555] text-[10px] tracking-widest uppercase">more</span>
+                  </div>
+                )}
+              </div>
+            </motion.section>
+          )}
+
+          {/* Other categories */}
           {Object.entries(grouped).map(([groupName, events]) => (
             <motion.section
               key={groupName}
@@ -80,9 +142,7 @@ export function EventsGallery() {
                       className="object-cover transition-transform duration-700 group-hover:scale-110 will-change-transform"
                       sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
                     />
-                    {/* Overlay */}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-70 group-hover:opacity-90 transition-opacity duration-300" />
-                    {/* Event title */}
                     <div className="absolute bottom-0 left-0 right-0 p-4">
                       <p className="text-white text-sm font-medium leading-tight">{event.title}</p>
                       <p className="text-[#c8a96e] text-[10px] tracking-widest uppercase mt-1">
@@ -97,7 +157,49 @@ export function EventsGallery() {
         </AnimatePresence>
       </div>
 
-      {/* Event lightbox / gallery */}
+      {/* Lacrosse full gallery lightbox */}
+      <AnimatePresence>
+        {openLacrosse && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/96 overflow-y-auto"
+          >
+            <div className="sticky top-0 z-10 bg-black/80 backdrop-blur-md border-b border-[#1a1a1a] px-6 py-4 flex items-center justify-between">
+              <div>
+                <p className="text-[#c8a96e] text-[10px] tracking-[0.3em] uppercase">Lacrosse</p>
+                <h2 className="text-white text-xl font-light">{lacrossePhotos.length} Photos</h2>
+              </div>
+              <button onClick={() => setOpenLacrosse(false)} className="text-[#666] hover:text-white transition-colors p-2">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="px-6 py-8 max-w-7xl mx-auto columns-1 sm:columns-2 lg:columns-3 gap-4 space-y-4">
+              {lacrossePhotos.map((photo, i) => (
+                <motion.div
+                  key={photo.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.04 }}
+                  className="break-inside-avoid"
+                >
+                  <Image
+                    src={photo.cloudinaryUrl}
+                    alt={photo.title}
+                    width={1280}
+                    height={960}
+                    className="w-full h-auto rounded-lg"
+                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                  />
+                </motion.div>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Other event lightbox */}
       <AnimatePresence>
         {openEvent && (
           <motion.div
@@ -106,7 +208,6 @@ export function EventsGallery() {
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-50 bg-black/96 overflow-y-auto"
           >
-            {/* Header */}
             <div className="sticky top-0 z-10 bg-black/80 backdrop-blur-md border-b border-[#1a1a1a] px-6 py-4 flex items-center justify-between">
               <div>
                 <p className="text-[#c8a96e] text-[10px] tracking-[0.3em] uppercase">
@@ -115,15 +216,10 @@ export function EventsGallery() {
                 </p>
                 <h2 className="text-white text-xl font-light">{openEvent.title}</h2>
               </div>
-              <button
-                onClick={() => setOpenEvent(null)}
-                className="text-[#666] hover:text-white transition-colors p-2"
-              >
+              <button onClick={() => setOpenEvent(null)} className="text-[#666] hover:text-white transition-colors p-2">
                 <X size={20} />
               </button>
             </div>
-
-            {/* Photos grid */}
             <div className="px-6 py-8 max-w-7xl mx-auto columns-1 sm:columns-2 lg:columns-3 gap-4 space-y-4">
               {openEvent.photos.map((photo, i) => (
                 <motion.div
