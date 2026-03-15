@@ -3,23 +3,21 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
-import { X } from "lucide-react";
+import { X, Download } from "lucide-react";
 import { EVENTS, CATEGORY_LABELS, type PortfolioEvent } from "@/data/portfolio";
+import { DownloadModal } from "@/components/download-modal";
 
 type LacrossePhoto = { id: number; cloudinaryUrl: string; title: string; cloudinaryId: string };
 
 const CATEGORIES = ["All", "lacrosse", "bike-races", "basketball", "soccer", "climbing"] as const;
-const ALL_LABELS: Record<string, string> = {
-  ...CATEGORY_LABELS,
-  lacrosse: "Lacrosse",
-};
+const ALL_LABELS: Record<string, string> = { ...CATEGORY_LABELS, lacrosse: "Lacrosse" };
 
 export function EventsGallery({ lacrossePhotos = [] }: { lacrossePhotos?: LacrossePhoto[] }) {
   const [activeCategory, setActiveCategory] = useState<string>("All");
   const [openEvent, setOpenEvent] = useState<PortfolioEvent | null>(null);
   const [openLacrosse, setOpenLacrosse] = useState(false);
+  const [downloadTarget, setDownloadTarget] = useState<{ url: string; filename: string } | null>(null);
 
-  // Jump to lacrosse section if URL has #lacrosse
   useEffect(() => {
     if (window.location.hash === "#lacrosse") {
       setActiveCategory("lacrosse");
@@ -28,8 +26,10 @@ export function EventsGallery({ lacrossePhotos = [] }: { lacrossePhotos?: Lacros
 
   const showLacrosse = activeCategory === "All" || activeCategory === "lacrosse";
   const filteredEvents =
-    activeCategory === "All" || activeCategory === "lacrosse"
-      ? activeCategory === "lacrosse" ? [] : EVENTS
+    activeCategory === "lacrosse"
+      ? []
+      : activeCategory === "All"
+      ? EVENTS
       : EVENTS.filter((e) => e.category === activeCategory);
 
   const grouped = filteredEvents.reduce<Record<string, PortfolioEvent[]>>((acc, event) => {
@@ -38,6 +38,8 @@ export function EventsGallery({ lacrossePhotos = [] }: { lacrossePhotos?: Lacros
     acc[key].push(event);
     return acc;
   }, {});
+
+  const lacrosseCover = lacrossePhotos[0]?.cloudinaryUrl ?? "";
 
   return (
     <>
@@ -62,10 +64,10 @@ export function EventsGallery({ lacrossePhotos = [] }: { lacrossePhotos?: Lacros
 
       <div className="px-6 pb-32 max-w-7xl mx-auto space-y-20">
         <AnimatePresence mode="wait">
-          {/* Lacrosse section — from DB */}
+          {/* Lacrosse folder card */}
           {showLacrosse && lacrossePhotos.length > 0 && (
             <motion.section
-              key="lacrosse"
+              key="lacrosse-section"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
@@ -74,38 +76,33 @@ export function EventsGallery({ lacrossePhotos = [] }: { lacrossePhotos?: Lacros
               <div className="flex items-center gap-6 mb-8">
                 <h2 className="text-[#c8a96e] text-xs tracking-[0.3em] uppercase">Lacrosse</h2>
                 <div className="flex-1 h-px bg-[#1a1a1a]" />
-                <span className="text-[#444] text-xs">{lacrossePhotos.length} photos</span>
+                <span className="text-[#444] text-xs">1 folder</span>
               </div>
-
-              {/* Mosaic preview — click opens full gallery */}
-              <div
-                className="grid grid-cols-2 md:grid-cols-4 gap-3 cursor-pointer group"
-                onClick={() => setOpenLacrosse(true)}
-              >
-                {lacrossePhotos.slice(0, 8).map((photo, i) => (
-                  <motion.div
-                    key={photo.id}
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ duration: 0.4, delay: i * 0.05 }}
-                    className={`relative overflow-hidden rounded-xl ${i === 0 ? "col-span-2 row-span-2 aspect-[4/3]" : "aspect-square"}`}
-                  >
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                <motion.button
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.4 }}
+                  onClick={() => setOpenLacrosse(true)}
+                  className="group relative aspect-[4/3] overflow-hidden rounded-xl cursor-pointer text-left"
+                >
+                  {lacrosseCover && (
                     <Image
-                      src={photo.cloudinaryUrl}
-                      alt={photo.title}
+                      src={lacrosseCover}
+                      alt="Lacrosse"
                       fill
-                      className="object-cover transition-transform duration-700 group-hover:scale-105 will-change-transform"
-                      sizes="(max-width: 640px) 50vw, 25vw"
+                      className="object-cover transition-transform duration-700 group-hover:scale-110 will-change-transform"
+                      sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-60 group-hover:opacity-80 transition-opacity duration-300" />
-                  </motion.div>
-                ))}
-                {lacrossePhotos.length > 8 && (
-                  <div className="aspect-square rounded-xl bg-[#111] border border-[#222] flex flex-col items-center justify-center gap-1">
-                    <span className="text-white text-xl font-light">+{lacrossePhotos.length - 8}</span>
-                    <span className="text-[#555] text-[10px] tracking-widest uppercase">more</span>
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-70 group-hover:opacity-90 transition-opacity duration-300" />
+                  <div className="absolute bottom-0 left-0 right-0 p-4">
+                    <p className="text-white text-sm font-medium leading-tight">Lacrosse</p>
+                    <p className="text-[#c8a96e] text-[10px] tracking-widest uppercase mt-1">
+                      {lacrossePhotos.length} photos
+                    </p>
                   </div>
-                )}
+                </motion.button>
               </div>
             </motion.section>
           )}
@@ -124,7 +121,6 @@ export function EventsGallery({ lacrossePhotos = [] }: { lacrossePhotos?: Lacros
                 <div className="flex-1 h-px bg-[#1a1a1a]" />
                 <span className="text-[#444] text-xs">{events.length} events</span>
               </div>
-
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 {events.map((event, i) => (
                   <motion.button
@@ -157,7 +153,7 @@ export function EventsGallery({ lacrossePhotos = [] }: { lacrossePhotos?: Lacros
         </AnimatePresence>
       </div>
 
-      {/* Lacrosse full gallery lightbox */}
+      {/* Lacrosse lightbox */}
       <AnimatePresence>
         {openLacrosse && (
           <motion.div
@@ -182,7 +178,7 @@ export function EventsGallery({ lacrossePhotos = [] }: { lacrossePhotos?: Lacros
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.04 }}
-                  className="break-inside-avoid"
+                  className="break-inside-avoid relative group"
                 >
                   <Image
                     src={photo.cloudinaryUrl}
@@ -192,6 +188,14 @@ export function EventsGallery({ lacrossePhotos = [] }: { lacrossePhotos?: Lacros
                     className="w-full h-auto rounded-lg"
                     sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                   />
+                  {/* Download button on hover */}
+                  <button
+                    onClick={() => setDownloadTarget({ url: photo.cloudinaryUrl, filename: `${photo.title}.jpg` })}
+                    className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity bg-black/70 hover:bg-black/90 text-white rounded-full p-2"
+                    title="Download"
+                  >
+                    <Download size={16} />
+                  </button>
                 </motion.div>
               ))}
             </div>
@@ -227,7 +231,7 @@ export function EventsGallery({ lacrossePhotos = [] }: { lacrossePhotos?: Lacros
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.05 }}
-                  className="break-inside-avoid"
+                  className="break-inside-avoid relative group"
                 >
                   <Image
                     src={photo.url}
@@ -237,12 +241,29 @@ export function EventsGallery({ lacrossePhotos = [] }: { lacrossePhotos?: Lacros
                     className="w-full h-auto rounded-lg"
                     sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                   />
+                  {/* Download button on hover */}
+                  <button
+                    onClick={() => setDownloadTarget({ url: photo.url, filename: `${openEvent.title}-${i + 1}.jpg` })}
+                    className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity bg-black/70 hover:bg-black/90 text-white rounded-full p-2"
+                    title="Download"
+                  >
+                    <Download size={16} />
+                  </button>
                 </motion.div>
               ))}
             </div>
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Download agreement modal */}
+      {downloadTarget && (
+        <DownloadModal
+          imageUrl={downloadTarget.url}
+          filename={downloadTarget.filename}
+          onClose={() => setDownloadTarget(null)}
+        />
+      )}
     </>
   );
 }

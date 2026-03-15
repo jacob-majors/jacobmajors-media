@@ -167,6 +167,14 @@ export function HeroScroll({ dbSlides, isAdmin }: { dbSlides?: SlideData[]; isAd
         onUpdate: (self) => {
           const p = self.progress;
 
+          // Fade entire sticky container out in the last 8% of scroll
+          const endFadeStart = 0.92;
+          const containerOpacity = p > endFadeStart ? Math.max(0, 1 - (p - endFadeStart) / 0.08) : 1;
+          if (containerRef.current) {
+            const sticky = containerRef.current.querySelector(".sticky") as HTMLElement | null;
+            if (sticky) gsap.set(sticky, { opacity: containerOpacity });
+          }
+
           slides.forEach((_, i) => {
             const slide = slidesRef.current[i];
             const text = textsRef.current[i];
@@ -212,6 +220,7 @@ export function HeroScroll({ dbSlides, isAdmin }: { dbSlides?: SlideData[]; isAd
                 textOpacity = Math.max(0, 1 - t * 1.5);
                 textY = t * -20;
               } else {
+                // Last slide: also fade out toward the very end
                 imgOpacity = 1; textOpacity = 1; textY = 0;
               }
             }
