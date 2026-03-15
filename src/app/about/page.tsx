@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { auth } from "@/auth";
 import { getSiteContent } from "@/app/actions/site-content";
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { AboutContent as _AboutContent } from "@/components/about-content"; // TEMP: restore by replacing SocialLinks-only view
 import { SocialLinks } from "@/components/social-links";
 
@@ -34,6 +35,7 @@ export default async function AboutPage() {
   ]);
 
   // TEMP: data unused while showing socials-only; restore with <AboutContent data={data} isAdmin={isAdmin} />
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const _data = Object.fromEntries(
     keys.map((k, i) => [k, values[i] ?? DEFAULTS[k]])
   ) as typeof DEFAULTS;

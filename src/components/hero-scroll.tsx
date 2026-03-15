@@ -206,13 +206,14 @@ export function HeroScroll({ dbSlides, isAdmin }: { dbSlides?: SlideData[]; isAd
   return (
     <>
       {/* Tall scroll-trigger container — no visual content, just sets scroll height */}
-      <div ref={containerRef} style={{ height: `${slides.length * 120}vh` }} className="relative" />
+      {/* Use 100dvh (dynamic viewport height) so iOS address bar changes don't break scroll calc */}
+      <div ref={containerRef} style={{ height: `${slides.length * 120}dvh` }} className="relative" />
 
       {/* Fixed visual layer — stays pinned to viewport, fades & hides as container scrolls past */}
       <div
         ref={fixedRef}
-        className="fixed top-0 left-0 w-full h-screen overflow-hidden"
-        style={{ zIndex: 10 }}
+        className="fixed top-0 left-0 w-full overflow-hidden"
+        style={{ zIndex: 10, height: "100dvh" }}
       >
         {/* Image layers */}
         {slides.map((slide, i) => (

@@ -10,11 +10,26 @@ interface Props {
 }
 
 function toDownloadUrl(url: string): string {
-  // Add fl_attachment to Cloudinary upload URLs to force browser download
-  if (url.includes("/image/upload/")) {
-    return url.replace("/image/upload/", "/image/upload/fl_attachment/");
+  // For Cloudinary upload URLs: strip any transformations so we get the original
+  // file, then add fl_attachment to trigger a browser download instead of navigation.
+  if (!url.includes("res.cloudinary.com") || !url.includes("/image/upload/")) return url;
+
+  const marker = "/image/upload/";
+  const base = url.slice(0, url.indexOf(marker) + marker.length);
+  const rest = url.slice(base.length);
+
+  // If URL contains a version string (v followed by digits), strip everything
+  // before it (transformations like q_auto,f_auto,w_1280 or fl_attachment) and
+  // replace with fl_attachment so the user gets the original full-res file.
+  const versionMatch = rest.match(/^(?:.+\/)?(v\d+\/.+)$/);
+  if (versionMatch) {
+    return base + "fl_attachment/" + versionMatch[1];
   }
-  return url;
+
+  // No version string — strip leading transformation segments (contain underscores)
+  // then prepend fl_attachment.
+  const noTransforms = rest.replace(/^(?:[a-z][a-z0-9_,]*\/)+/, "");
+  return base + "fl_attachment/" + noTransforms;
 }
 
 export function DownloadModal({ imageUrl, filename = "photo.jpg", onClose }: Props) {
@@ -22,21 +37,18 @@ export function DownloadModal({ imageUrl, filename = "photo.jpg", onClose }: Pro
   const [sellChecked, setSellChecked] = useState(false);
   const canDownload = tagChecked && sellChecked;
 
-  async function handleDownload() {
-    try {
-      // Fetch as blob so the browser downloads instead of navigating
-      const res = await fetch(toDownloadUrl(imageUrl));
-      const blob = await res.blob();
-      const blobUrl = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = blobUrl;
-      a.download = filename;
-      a.click();
-      setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
-    } catch {
-      // Fallback: open in new tab
-      window.open(imageUrl, "_blank");
-    }
+  function handleDownload() {
+    // Use a direct link — fl_attachment in the URL tells the server to send
+    // Content-Disposition: attachment, so the browser downloads immediately
+    // without any delay. No fetch/blob needed.
+    const url = toDownloadUrl(imageUrl);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename; // respected for same-origin; fl_attachment handles cross-origin
+    a.rel = "noopener noreferrer";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
     onClose();
   }
 

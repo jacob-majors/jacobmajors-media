@@ -11,7 +11,15 @@ import { useEditMode } from "@/hooks/use-edit-mode";
 
 type Tag = { number: string; name: string };
 type LacrossePhoto = { id: number; cloudinaryUrl: string; title: string; cloudinaryId: string };
-type ViewEntry = { url: string; cloudinaryId?: string };
+// photoKey is used as the siteContent key for tags; derived from cloudinaryId for DB photos
+// or from the event id + index for static local photos
+type ViewEntry = { url: string; cloudinaryId?: string; photoKey?: string };
+// One entry per photo that has at least one tag — stored in photo.tags.searchIndex
+type SearchIndexEntry = { photoKey: string; photoUrl: string; eventTitle: string; tags: Tag[] };
+
+function getTagKey(entry: ViewEntry): string | undefined {
+  return entry.cloudinaryId ?? entry.photoKey;
+}
 
 const CATEGORIES = ["All", "lacrosse", "bike-races", "basketball", "soccer", "climbing"] as const;
 const ALL_LABELS: Record<string, string> = { ...CATEGORY_LABELS, lacrosse: "Lacrosse" };
@@ -26,11 +34,20 @@ export function EventsGallery({ lacrossePhotos = [], isAdmin = false }: { lacros
   const [viewTags, setViewTags] = useState<Tag[]>([]);
   const [tagDraft, setTagDraft] = useState({ number: "", name: "" });
   const [tagSaving, setTagSaving] = useState(false);
+  const [editingTagIdx, setEditingTagIdx] = useState<number | null>(null);
+  const [allTags, setAllTags] = useState<Tag[]>([]);
+  const [suggestions, setSuggestions] = useState<Tag[]>([]);
+  const [searchIndex, setSearchIndex] = useState<SearchIndexEntry[]>([]);
+  const [globalQuery, setGlobalQuery] = useState("");
   const { editMode } = useEditMode();
   const canTag = isAdmin && editMode;
 
   useEffect(() => {
     if (window.location.hash === "#lacrosse") setActiveCategory("lacrosse");
+    // Load search index for global search
+    getSiteContent("photo.tags.searchIndex").then((val) => {
+      try { setSearchIndex(val ? JSON.parse(val) : []); } catch { setSearchIndex([]); }
+    });
   }, []);
 
   const showLacrosse = activeCategory === "All" || activeCategory === "lacrosse";
@@ -46,29 +63,94 @@ export function EventsGallery({ lacrossePhotos = [], isAdmin = false }: { lacros
     return acc;
   }, {});
 
-  // Fetch tags for currently viewed photo
+  // Fetch global tag index for autocomplete when admin enters edit mode
   useEffect(() => {
-    if (!viewPhoto?.entry.cloudinaryId) { setViewTags([]); return; }
-    getSiteContent(`photo.tags.${viewPhoto.entry.cloudinaryId}`).then((val) => {
+    if (!canTag) return;
+    getSiteContent("photo.tags.all").then((val) => {
+      try { setAllTags(val ? JSON.parse(val) : []); } catch { setAllTags([]); }
+    });
+  }, [canTag]);
+
+  // Recompute suggestions whenever draft changes
+  useEffect(() => {
+    const numQ = tagDraft.number.toLowerCase().trim();
+    const nameQ = tagDraft.name.toLowerCase().trim();
+    if (!numQ && !nameQ) { setSuggestions([]); return; }
+    setSuggestions(
+      allTags.filter(t =>
+        (!numQ || t.number?.toLowerCase().includes(numQ)) &&
+        (!nameQ || t.name?.toLowerCase().includes(nameQ))
+      ).slice(0, 6)
+    );
+  }, [tagDraft, allTags]);
+
+  // Fetch tags for currently viewed photo; reset editing state when photo changes
+  useEffect(() => {
+    const key = viewPhoto ? getTagKey(viewPhoto.entry) : undefined;
+    setEditingTagIdx(null);
+    setTagDraft({ number: "", name: "" });
+    if (!key) { setViewTags([]); return; }
+    getSiteContent(`photo.tags.${key}`).then((val) => {
       try { setViewTags(val ? JSON.parse(val) : []); } catch { setViewTags([]); }
     });
-  }, [viewPhoto?.entry.cloudinaryId]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewPhoto?.entry.cloudinaryId, viewPhoto?.entry.photoKey, viewPhoto?.idx]);
 
   async function saveTag() {
-    if (!viewPhoto?.entry.cloudinaryId || !tagDraft.number || !tagDraft.name) return;
+    const key = viewPhoto ? getTagKey(viewPhoto.entry) : undefined;
+    if (!key || (!tagDraft.number && !tagDraft.name)) return;
     setTagSaving(true);
-    const updated = [...viewTags, { number: tagDraft.number, name: tagDraft.name }];
-    await setSiteContent(`photo.tags.${viewPhoto.entry.cloudinaryId}`, JSON.stringify(updated));
+    let updated: Tag[];
+    if (editingTagIdx !== null) {
+      updated = viewTags.map((t, i) => i === editingTagIdx ? { number: tagDraft.number, name: tagDraft.name } : t);
+    } else {
+      updated = [...viewTags, { number: tagDraft.number, name: tagDraft.name }];
+    }
+    await setSiteContent(`photo.tags.${key}`, JSON.stringify(updated));
     setViewTags(updated);
+
+    // Keep the global autocomplete index up to date
+    const newTag = { number: tagDraft.number, name: tagDraft.name };
+    const alreadyIndexed = allTags.some(t => t.number === newTag.number && t.name === newTag.name);
+    if (!alreadyIndexed) {
+      const updatedAll = [...allTags, newTag];
+      await setSiteContent("photo.tags.all", JSON.stringify(updatedAll));
+      setAllTags(updatedAll);
+    }
+
+    // Sync the search index (one entry per tagged photo, searched client-side)
+    // viewPhoto is guaranteed non-null here because key is derived from viewPhoto
+    const newEntry: SearchIndexEntry = {
+      photoKey: key,
+      photoUrl: viewPhoto?.entry.url ?? "",
+      eventTitle: viewPhoto?.prefix ?? "",
+      tags: updated,
+    };
+    const updatedIndex = searchIndex.some(e => e.photoKey === key)
+      ? searchIndex.map(e => e.photoKey === key ? newEntry : e)
+      : [...searchIndex, newEntry];
+    await setSiteContent("photo.tags.searchIndex", JSON.stringify(updatedIndex));
+    setSearchIndex(updatedIndex);
+
     setTagDraft({ number: "", name: "" });
+    setEditingTagIdx(null);
+    setSuggestions([]);
     setTagSaving(false);
   }
 
   async function removeTag(idx: number) {
-    if (!viewPhoto?.entry.cloudinaryId) return;
+    const key = viewPhoto ? getTagKey(viewPhoto.entry) : undefined;
+    if (!key) return;
     const updated = viewTags.filter((_, i) => i !== idx);
-    await setSiteContent(`photo.tags.${viewPhoto.entry.cloudinaryId}`, JSON.stringify(updated));
+    await setSiteContent(`photo.tags.${key}`, JSON.stringify(updated));
     setViewTags(updated);
+
+    // Sync the search index — remove entry if no tags remain
+    const updatedIndex = updated.length > 0
+      ? searchIndex.map(e => e.photoKey === key ? { ...e, tags: updated } : e)
+      : searchIndex.filter(e => e.photoKey !== key);
+    await setSiteContent("photo.tags.searchIndex", JSON.stringify(updatedIndex));
+    setSearchIndex(updatedIndex);
   }
 
   const goPrev = useCallback(() => {
@@ -118,16 +200,91 @@ export function EventsGallery({ lacrossePhotos = [], isAdmin = false }: { lacros
 
   function openEventPhoto(event: PortfolioEvent, i: number) {
     setViewPhoto({
-      entry: { url: event.photos[i].url },
-      all: event.photos.map(p => ({ url: p.url })),
+      entry: { url: event.photos[i].url, photoKey: `evt.${event.id}.${i}` },
+      all: event.photos.map((p, j) => ({ url: p.url, photoKey: `evt.${event.id}.${j}` })),
       idx: i,
       prefix: event.title,
     });
   }
 
+  // Compute search results from the index
+  const searchResults = globalQuery.trim()
+    ? searchIndex.filter(entry =>
+        entry.tags.some(t =>
+          t.name?.toLowerCase().includes(globalQuery.toLowerCase().trim()) ||
+          t.number?.toLowerCase().includes(globalQuery.toLowerCase().trim())
+        )
+      )
+    : [];
+
   return (
     <>
-      {/* Category filter */}
+      {/* Global search */}
+      <div className="px-4 sm:px-6 pb-6 max-w-7xl mx-auto">
+        <div className="relative">
+          <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#444]" />
+          <input
+            type="search"
+            placeholder="Search by name or number across all photos…"
+            value={globalQuery}
+            onChange={e => setGlobalQuery(e.target.value)}
+            className="w-full bg-[#111] border border-[#222] text-white text-sm pl-9 pr-9 py-2.5 rounded-full focus:outline-none focus:border-[#c8a96e]/50 placeholder-[#444]"
+          />
+          {globalQuery && (
+            <button onClick={() => setGlobalQuery("")} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#555] hover:text-white transition-colors">
+              <X size={14} />
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Search results view */}
+      {globalQuery && (
+        <div className="px-4 sm:px-6 pb-24 sm:pb-32 max-w-7xl mx-auto">
+          {searchResults.length === 0 ? (
+            <p className="text-[#444] text-sm">No results for &ldquo;{globalQuery}&rdquo;</p>
+          ) : (
+            <>
+              <p className="text-[#555] text-[10px] tracking-widest uppercase mb-5">
+                {searchResults.length} photo{searchResults.length !== 1 ? "s" : ""} found
+              </p>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
+                {searchResults.map((entry, i) => (
+                  <button
+                    key={entry.photoKey}
+                    onClick={() => setViewPhoto({
+                      entry: { url: entry.photoUrl, photoKey: entry.photoKey },
+                      all: searchResults.map(r => ({ url: r.photoUrl, photoKey: r.photoKey })),
+                      idx: i,
+                      prefix: entry.eventTitle,
+                    })}
+                    className="group relative aspect-[4/3] overflow-hidden rounded-xl"
+                  >
+                    <Image src={entry.photoUrl} alt="" fill className="object-cover transition-transform duration-500 group-hover:scale-105 will-change-transform" sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw" />
+                    <div className="absolute inset-0 bg-black/40 group-hover:bg-black/55 transition-colors duration-300" />
+                    {/* Tags centered over the image */}
+                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 p-3">
+                      {entry.tags.map((t, ti) => (
+                        <span key={ti} className="flex items-center gap-1.5 bg-black/70 backdrop-blur-sm border border-white/10 rounded-full px-3 py-1">
+                          {t.number && <span className="text-[#c8a96e] text-xs font-semibold">#{t.number}</span>}
+                          {t.name && <span className="text-white text-xs">{t.name}</span>}
+                        </span>
+                      ))}
+                    </div>
+                    {/* Event label at bottom */}
+                    <p className="absolute bottom-0 left-0 right-0 px-3 py-2 text-[8px] sm:text-[9px] text-[#888] tracking-widest uppercase truncate bg-gradient-to-t from-black/80 to-transparent">
+                      {entry.eventTitle}
+                    </p>
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Category filter + gallery — hidden while searching */}
+      {!globalQuery && <>
       <div className="px-4 sm:px-6 pb-8 sm:pb-12 max-w-7xl mx-auto" id="lacrosse">
         <div className="flex flex-wrap gap-2 sm:gap-3">
           {CATEGORIES.map((cat) => (
@@ -203,11 +360,12 @@ export function EventsGallery({ lacrossePhotos = [], isAdmin = false }: { lacros
           ))}
         </AnimatePresence>
       </div>
+      </>}
 
       {/* ── Lacrosse lightbox ── */}
       <AnimatePresence>
         {openLacrosse && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 bg-black overflow-y-auto">
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 bg-black overflow-y-auto overscroll-contain" style={{ WebkitOverflowScrolling: "touch" }}>
             {/* Sticky header */}
             <div className="sticky top-0 z-10 bg-black/90 backdrop-blur-md border-b border-[#1a1a1a] px-4 sm:px-6 py-3 sm:py-4">
               <div className="flex items-center justify-between mb-2 sm:mb-3">
@@ -219,7 +377,7 @@ export function EventsGallery({ lacrossePhotos = [], isAdmin = false }: { lacros
                   <X size={20} />
                 </button>
               </div>
-              <LacrosseSearch photos={lacrossePhotos} onPhotoClick={(i) => { openLacrossePhoto(i); }} />
+              <LacrosseSearch searchIndex={searchIndex} lacrossePhotos={lacrossePhotos} onPhotoClick={(i) => { openLacrossePhoto(i); }} />
             </div>
 
             {/* Photo grid — single column on mobile, masonry on larger */}
@@ -250,7 +408,7 @@ export function EventsGallery({ lacrossePhotos = [], isAdmin = false }: { lacros
       {/* ── Other event lightbox ── */}
       <AnimatePresence>
         {openEvent && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 bg-black overflow-y-auto">
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 bg-black overflow-y-auto overscroll-contain" style={{ WebkitOverflowScrolling: "touch" }}>
             <div className="sticky top-0 z-10 bg-black/90 backdrop-blur-md border-b border-[#1a1a1a] px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between">
               <div className="min-w-0 pr-3">
                 <p className="text-[#c8a96e] text-[9px] sm:text-[10px] tracking-[0.3em] uppercase">
@@ -295,7 +453,8 @@ export function EventsGallery({ lacrossePhotos = [], isAdmin = false }: { lacros
         {viewPhoto && (
           <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[70] bg-black flex flex-col"
+            className="fixed inset-0 z-[70] bg-black flex flex-col overscroll-none"
+            style={{ paddingTop: "env(safe-area-inset-top)", paddingBottom: "env(safe-area-inset-bottom)" }}
             onTouchStart={onTouchStart}
             onTouchEnd={onTouchEnd}
           >
@@ -340,46 +499,86 @@ export function EventsGallery({ lacrossePhotos = [], isAdmin = false }: { lacros
             </div>
 
             {/* Tags + edit-mode tag form at bottom */}
-            {(viewTags.length > 0 || canTag) && (
+            {(viewTags.length > 0 || (canTag && viewPhoto && getTagKey(viewPhoto.entry))) && (
               <div className="flex-shrink-0 px-4 sm:px-6 py-3 sm:py-4 bg-black/70 backdrop-blur-sm space-y-3">
-                {/* Existing tags */}
+                {/* Existing tags — clickable to edit in edit mode */}
                 {viewTags.length > 0 && (
                   <div className="flex flex-wrap gap-2 sm:gap-3 items-center justify-center">
                     {viewTags.map((tag, ti) => (
-                      <span key={ti} className="flex items-center gap-1.5 sm:gap-2 bg-[#1a1a1a] border border-[#2a2a2a] rounded-full px-3 sm:px-4 py-1 sm:py-1.5">
-                        <span className="text-[#c8a96e] text-xs font-medium">#{tag.number}</span>
-                        <span className="text-white text-xs sm:text-sm">{tag.name}</span>
+                      <span
+                        key={ti}
+                        onClick={() => {
+                          if (!canTag) return;
+                          setEditingTagIdx(ti);
+                          setTagDraft({ number: tag.number, name: tag.name });
+                        }}
+                        className={`flex items-center gap-1.5 sm:gap-2 bg-[#1a1a1a] border rounded-full px-3 sm:px-4 py-1 sm:py-1.5 transition-colors ${
+                          canTag
+                            ? editingTagIdx === ti
+                              ? "border-[#c8a96e] cursor-pointer"
+                              : "border-[#2a2a2a] hover:border-[#444] cursor-pointer"
+                            : "border-[#2a2a2a]"
+                        }`}
+                      >
+                        {tag.number && <span className="text-[#c8a96e] text-xs font-medium">#{tag.number}</span>}
+                        {tag.name && <span className="text-white text-xs sm:text-sm">{tag.name}</span>}
                         {canTag && (
-                          <button onClick={() => removeTag(ti)} className="text-[#555] hover:text-red-400 text-[10px] ml-1 transition-colors">✕</button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); removeTag(ti); }}
+                            className="text-[#555] hover:text-red-400 text-[10px] ml-1 transition-colors"
+                          >✕</button>
                         )}
                       </span>
                     ))}
                   </div>
                 )}
 
-                {/* Tag form — edit mode only, only for lacrosse photos (which have cloudinaryId) */}
-                {canTag && viewPhoto?.entry.cloudinaryId && (
-                  <div className="flex gap-2 items-center justify-center">
-                    <input
-                      placeholder="#"
-                      value={tagDraft.number}
-                      onChange={e => setTagDraft(d => ({ ...d, number: e.target.value }))}
-                      className="w-14 sm:w-16 bg-[#111] border border-[#333] text-white text-sm px-2 py-1.5 rounded-lg focus:outline-none focus:border-[#c8a96e] text-center"
-                    />
-                    <input
-                      placeholder="Player name"
-                      value={tagDraft.name}
-                      onChange={e => setTagDraft(d => ({ ...d, name: e.target.value }))}
-                      onKeyDown={e => e.key === "Enter" && saveTag()}
-                      className="flex-1 max-w-[200px] bg-[#111] border border-[#333] text-white text-sm px-3 py-1.5 rounded-lg focus:outline-none focus:border-[#c8a96e]"
-                    />
-                    <button
-                      onClick={saveTag}
-                      disabled={tagSaving || !tagDraft.number || !tagDraft.name}
-                      className="bg-[#c8a96e] text-black text-xs tracking-widest uppercase px-3 py-1.5 rounded-lg font-medium disabled:opacity-40 transition-opacity whitespace-nowrap"
-                    >
-                      {tagSaving ? "…" : "Tag"}
-                    </button>
+                {/* Tag form — edit mode only, for any photo */}
+                {canTag && viewPhoto && getTagKey(viewPhoto.entry) && (
+                  <div className="space-y-2">
+                    <div className="flex gap-2 items-center justify-center">
+                      <input
+                        placeholder="#"
+                        value={tagDraft.number}
+                        onChange={e => setTagDraft(d => ({ ...d, number: e.target.value }))}
+                        className="w-14 sm:w-16 bg-[#111] border border-[#333] text-white text-sm px-2 py-1.5 rounded-lg focus:outline-none focus:border-[#c8a96e] text-center"
+                      />
+                      <input
+                        placeholder="Name"
+                        value={tagDraft.name}
+                        onChange={e => setTagDraft(d => ({ ...d, name: e.target.value }))}
+                        onKeyDown={e => e.key === "Enter" && saveTag()}
+                        className="flex-1 max-w-[200px] bg-[#111] border border-[#333] text-white text-sm px-3 py-1.5 rounded-lg focus:outline-none focus:border-[#c8a96e]"
+                      />
+                      <button
+                        onClick={saveTag}
+                        disabled={tagSaving || (!tagDraft.number && !tagDraft.name)}
+                        className="bg-[#c8a96e] text-black text-xs tracking-widest uppercase px-3 py-1.5 rounded-lg font-medium disabled:opacity-40 transition-opacity whitespace-nowrap"
+                      >
+                        {tagSaving ? "…" : editingTagIdx !== null ? "Save" : "Tag"}
+                      </button>
+                      {editingTagIdx !== null && (
+                        <button
+                          onClick={() => { setEditingTagIdx(null); setTagDraft({ number: "", name: "" }); setSuggestions([]); }}
+                          className="text-[#555] hover:text-white text-xs transition-colors"
+                        >Cancel</button>
+                      )}
+                    </div>
+                    {/* Autocomplete suggestions */}
+                    {suggestions.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 justify-center">
+                        {suggestions.map((s, i) => (
+                          <button
+                            key={i}
+                            onClick={() => { setTagDraft({ number: s.number, name: s.name }); setSuggestions([]); }}
+                            className="flex items-center gap-1 bg-[#111] border border-[#2a2a2a] hover:border-[#c8a96e]/50 rounded-full px-2.5 py-1 transition-colors"
+                          >
+                            {s.number && <span className="text-[#c8a96e] text-[10px] font-medium">#{s.number}</span>}
+                            {s.name && <span className="text-white text-[10px]">{s.name}</span>}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -396,36 +595,30 @@ export function EventsGallery({ lacrossePhotos = [], isAdmin = false }: { lacros
   );
 }
 
-// ── Lacrosse search ────────────────────────────────────────────────────────────
+// ── Lacrosse search — uses the pre-built search index (no per-photo DB fetches) ──
 export function LacrosseSearch({
-  photos,
+  searchIndex,
+  lacrossePhotos,
   onPhotoClick,
 }: {
-  photos: LacrossePhoto[];
+  searchIndex: SearchIndexEntry[];
+  lacrossePhotos: LacrossePhoto[];
   onPhotoClick?: (idx: number) => void;
 }) {
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<{ photo: LacrossePhoto; tags: Tag[]; originalIdx: number }[]>([]);
-  const [searching, setSearching] = useState(false);
-  const [open, setOpen] = useState(false);
 
-  useEffect(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) { setResults([]); setOpen(false); return; }
-    setSearching(true);
-    setOpen(true);
-    Promise.all(
-      photos.map(async (photo, originalIdx) => {
-        const val = await getSiteContent(`photo.tags.${photo.cloudinaryId}`);
-        let tags: Tag[] = [];
-        try { tags = val ? JSON.parse(val) : []; } catch {}
-        return { photo, tags, originalIdx };
-      })
-    ).then((all) => {
-      setResults(all.filter(({ tags }) => tags.some(t => t.name.toLowerCase().includes(q) || t.number.toLowerCase().includes(q))));
-      setSearching(false);
-    });
-  }, [query, photos]);
+  const q = query.trim().toLowerCase();
+  // Lacrosse entries: photoKey is a cloudinaryId (no "evt." prefix)
+  const results = q
+    ? searchIndex
+        .filter(e => !e.photoKey.startsWith("evt.") &&
+          e.tags.some(t => t.name?.toLowerCase().includes(q) || t.number?.toLowerCase().includes(q)))
+        .map(e => ({
+          ...e,
+          originalIdx: lacrossePhotos.findIndex(p => p.cloudinaryId === e.photoKey),
+        }))
+        .filter(e => e.originalIdx >= 0)
+    : [];
 
   return (
     <div>
@@ -439,30 +632,30 @@ export function LacrosseSearch({
           onChange={(e) => setQuery(e.target.value)}
           className="w-full bg-[#111] border border-[#222] text-white text-sm pl-9 pr-4 py-2 rounded-full focus:outline-none focus:border-[#c8a96e]/50 placeholder-[#444]"
         />
-        {searching && <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[#444] text-[10px] animate-pulse">…</span>}
       </div>
 
       {/* Results */}
       <AnimatePresence>
-        {open && query.trim() && (
+        {q && (
           <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mt-3">
-            {results.length === 0 && !searching ? (
+            {results.length === 0 ? (
               <p className="text-[#444] text-xs px-1">No results for &ldquo;{query}&rdquo;</p>
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3 max-h-60 overflow-y-auto pr-1">
-                {results.map(({ photo, tags, originalIdx }) => (
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
+                {results.map((entry) => (
                   <button
-                    key={photo.id}
-                    onClick={() => { onPhotoClick?.(originalIdx); setQuery(""); setOpen(false); }}
-                    className="relative aspect-[4/3] rounded-lg overflow-hidden text-left group"
+                    key={entry.photoKey}
+                    onClick={() => { onPhotoClick?.(entry.originalIdx); setQuery(""); }}
+                    className="relative aspect-[4/3] rounded-lg overflow-hidden group"
                   >
-                    <Image src={photo.cloudinaryUrl} alt={photo.title} fill className="object-cover" sizes="(max-width: 640px) 50vw, 33vw" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
-                    <div className="absolute bottom-0 left-0 right-0 p-2 flex flex-wrap gap-1">
-                      {tags.map((t, i) => (
-                        <span key={i} className="text-[9px] sm:text-[10px] rounded px-1.5 py-0.5 bg-black/60">
-                          <span className="text-[#c8a96e]">#{t.number}</span>
-                          <span className="text-white ml-1">{t.name}</span>
+                    <Image src={entry.photoUrl} alt="" fill className="object-cover transition-transform duration-300 group-hover:scale-105" sizes="(max-width: 640px) 50vw, 33vw" />
+                    <div className="absolute inset-0 bg-black/40 group-hover:bg-black/55 transition-colors" />
+                    {/* Tags centered over image */}
+                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 p-2">
+                      {entry.tags.map((t, i) => (
+                        <span key={i} className="flex items-center gap-1 bg-black/70 backdrop-blur-sm border border-white/10 rounded-full px-2.5 py-0.5">
+                          {t.number && <span className="text-[#c8a96e] text-[10px] font-semibold">#{t.number}</span>}
+                          {t.name && <span className="text-white text-[10px]">{t.name}</span>}
                         </span>
                       ))}
                     </div>
