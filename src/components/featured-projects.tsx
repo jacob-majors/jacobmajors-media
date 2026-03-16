@@ -36,7 +36,7 @@ export function FeaturedProjects({ projects }: { projects: Project[] }) {
               transition={{ duration: 0.7, delay: i * 0.15, ease: [0.25, 0.1, 0.25, 1] }}
               className="group border border-[#1a1a1a] rounded-2xl overflow-hidden hover:border-[#c8a96e]/30 transition-colors duration-500"
             >
-              <Link href={`/projects/${project.id}`}>
+              <Link href={project.liveUrl ?? `/projects/${project.id}`} target={project.liveUrl ? "_blank" : undefined} rel={project.liveUrl ? "noopener noreferrer" : undefined}>
                 {project.cloudinaryId && (
                   <div className="relative aspect-video overflow-hidden">
                     <CldImage
