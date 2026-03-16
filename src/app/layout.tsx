@@ -27,7 +27,7 @@ export default async function RootLayout({
 }) {
   const session = await auth();
   const isAdmin = !!session?.user;
-  let navSettings = { showEngineering: false, showWriting: false };
+  let navSettings = { showEngineering: true, showWriting: false };
   try {
     const raw = await getSiteContent("settings.nav");
     if (raw) navSettings = { ...navSettings, ...JSON.parse(raw) };

@@ -8,10 +8,10 @@ import { useEditMode } from "@/hooks/use-edit-mode";
 import { publishToGitHub } from "@/app/actions/publish";
 
 const BASE_LINKS = [
-  { href: "/photography", label: "Photography", settingKey: null },
-  { href: "/projects", label: "Engineering", settingKey: "showEngineering" },
-  { href: "/blog", label: "Writing", settingKey: "showWriting" },
-  { href: "/about", label: "About", settingKey: null },
+  { href: "/photography", label: "Photography", settingKey: null, defaultVisible: true },
+  { href: "/projects", label: "Engineering", settingKey: "showEngineering", defaultVisible: true },
+  { href: "/blog", label: "Writing", settingKey: "showWriting", defaultVisible: false },
+  { href: "/about", label: "About", settingKey: null, defaultVisible: true },
 ];
 
 export function Nav({ isAdmin, navSettings }: {
@@ -20,7 +20,8 @@ export function Nav({ isAdmin, navSettings }: {
 }) {
   const links = BASE_LINKS.filter((l) => {
     if (!l.settingKey) return true;
-    return navSettings?.[l.settingKey as keyof typeof navSettings] ?? false;
+    const setting = navSettings?.[l.settingKey as keyof typeof navSettings];
+    return setting ?? l.defaultVisible;
   });
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
