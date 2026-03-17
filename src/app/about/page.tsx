@@ -48,8 +48,9 @@ export default async function AboutPage() {
       <div className="max-w-3xl mx-auto px-6 py-20 flex-1 w-full flex flex-col items-center justify-center gap-6 text-center">
         <p className="text-[#c8a96e] text-xs tracking-[0.4em] uppercase">Jacob Majors</p>
         <p className="text-[#888] text-sm leading-relaxed max-w-sm">
-          16-year-old photographer based in Sonoma County, California. Currently attending Sonoma Academy.
-          I shoot action sports — lacrosse, mountain bike races, basketball, soccer, and climbing.
+          16-year-old photographer and engineer based in Sonoma County, California. Currently attending Sonoma Academy.
+          I shoot action sports — lacrosse, mountain bike races, basketball, soccer, and climbing — and I build things: accessibility hardware, embedded systems, and full-stack web apps.
+          Engineering, for me, is about solving real problems for real people.
         </p>
 
         {/* TEMP: showing socials only — restore <AboutContent> to bring back full bio */}
