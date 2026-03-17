@@ -39,7 +39,7 @@ function pct(usage: number, limit: number) {
 
 export function SettingsForm() {
   // ── Nav settings ──
-  const [showEngineering, setShowEngineering] = useState(false);
+  const [showEngineering, setShowEngineering] = useState(true);
   const [showWriting, setShowWriting] = useState(false);
   const [navSaving, setNavSaving] = useState(false);
   const [navMsg, setNavMsg] = useState<string | null>(null);
@@ -60,7 +60,7 @@ export function SettingsForm() {
     getSiteContent("settings.nav").then((val) => {
       try {
         const s = val ? JSON.parse(val) : {};
-        setShowEngineering(s.showEngineering ?? false);
+        setShowEngineering(s.showEngineering ?? true);
         setShowWriting(s.showWriting ?? false);
       } catch {}
     });

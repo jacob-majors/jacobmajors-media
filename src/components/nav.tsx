@@ -59,7 +59,7 @@ export function Nav({ isAdmin, navSettings }: {
 
         {/* Desktop nav */}
         <div className="hidden md:flex items-center gap-10">
-          {links.filter(l => !l.hidden).map((link) => (
+          {links.map((link) => (
             <Link
               key={link.href}
               href={link.href}
@@ -137,7 +137,7 @@ export function Nav({ isAdmin, navSettings }: {
         menuOpen ? "max-h-80 opacity-100" : "max-h-0 opacity-0"
       )}>
         <div className="px-6 pb-6 flex flex-col gap-6 border-b border-[#1a1a1a]">
-          {links.filter(l => !l.hidden).map((link) => (
+          {links.map((link) => (
             <Link
               key={link.href}
               href={link.href}
