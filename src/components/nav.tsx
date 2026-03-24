@@ -9,7 +9,7 @@ import { publishToGitHub } from "@/app/actions/publish";
 
 const BASE_LINKS = [
   { href: "/photography", label: "Photography", settingKey: null, defaultVisible: true },
-  { href: "/projects", label: "Engineering", settingKey: "showEngineering", defaultVisible: true },
+  { href: "/projects", label: "Engineering", settingKey: "showEngineering", defaultVisible: false },
   { href: "/blog", label: "Writing", settingKey: "showWriting", defaultVisible: false },
   { href: "/about", label: "About", settingKey: null, defaultVisible: true },
 ];
