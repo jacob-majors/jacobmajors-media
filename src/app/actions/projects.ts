@@ -13,6 +13,7 @@ export async function saveProject(data: {
   liveUrl?: string;
   cloudinaryId?: string;
   cloudinaryUrl?: string;
+  stlUrl?: string;
   featured: boolean;
 }) {
   await db.insert(projects).values(data);

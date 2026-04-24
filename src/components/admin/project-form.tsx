@@ -22,6 +22,7 @@ const EMPTY_FORM: FormState = {
 
 export function ProjectForm() {
   const [uploaded, setUploaded] = useState<{ public_id: string; secure_url: string } | null>(null);
+  const [stlUrl, setStlUrl] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -75,12 +76,14 @@ export function ProjectForm() {
       tags: JSON.stringify(form.tags.split(",").map((t) => t.trim()).filter(Boolean)),
       cloudinaryId: uploaded?.public_id,
       cloudinaryUrl: uploaded?.secure_url ?? importedCover,
+      stlUrl: stlUrl ?? undefined,
     });
     setSaving(false);
     setSuccess(true);
     setTimeout(() => setSuccess(false), 3000);
     setForm(EMPTY_FORM);
     setUploaded(null);
+    setStlUrl(null);
     setImportedPhotos([]);
     setImportedCover("");
     setIbleUrl("");
@@ -180,6 +183,29 @@ export function ProjectForm() {
                 : importedCover
                 ? "✓ Using Instructables cover photo (click to override)"
                 : "Upload cover image (optional)"}
+            </button>
+          )}
+        </CldUploadWidget>
+
+        {/* STL 3D model upload */}
+        <CldUploadWidget
+          uploadPreset={process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET}
+          options={{ resourceType: "raw", clientAllowedFormats: ["stl"] } as Record<string, unknown>}
+          onSuccess={(result) => {
+            if (result.info && typeof result.info === "object") {
+              const info = result.info as { secure_url: string };
+              setStlUrl(info.secure_url);
+            }
+          }}
+        >
+          {({ open }) => (
+            <button
+              onClick={() => open()}
+              className="border border-dashed border-[#333] rounded-lg p-4 w-full text-center hover:border-[#c8a96e] transition-colors text-[#666] text-sm"
+            >
+              {stlUrl
+                ? "✓ STL model uploaded (hover on card to preview)"
+                : "Upload 3D model (.stl) — shown on hover over project image"}
             </button>
           )}
         </CldUploadWidget>

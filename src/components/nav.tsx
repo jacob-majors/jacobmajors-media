@@ -6,10 +6,11 @@ import { usePathname } from "next/navigation";
 import { clsx } from "clsx";
 import { useEditMode } from "@/hooks/use-edit-mode";
 import { publishToGitHub } from "@/app/actions/publish";
+import { useTheme } from "@/providers/theme-provider";
+import { Layers, Sun, Moon } from "lucide-react";
 
 const BASE_LINKS = [
   { href: "/photography", label: "Photography", settingKey: null, defaultVisible: true },
-  { href: "/projects", label: "Engineering", settingKey: "showEngineering", defaultVisible: false },
   { href: "/blog", label: "Writing", settingKey: "showWriting", defaultVisible: false },
   { href: "/about", label: "About", settingKey: null, defaultVisible: true },
 ];
@@ -29,6 +30,7 @@ export function Nav({ isAdmin, navSettings }: {
   const [publishMsg, setPublishMsg] = useState<string | null>(null);
   const pathname = usePathname();
   const { editMode, setEditMode } = useEditMode();
+  const { theme, setTheme, webgl, setWebgl } = useTheme();
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 50);
@@ -47,9 +49,10 @@ export function Nav({ isAdmin, navSettings }: {
 
   return (
     <nav
+      style={scrolled ? { backgroundColor: "var(--nav-bg)", borderBottomColor: "var(--border)" } : {}}
       className={clsx(
         "fixed top-0 left-0 right-0 z-50 transition-all duration-500",
-        scrolled ? "bg-[#0a0a0a]/90 backdrop-blur-md border-b border-[#1a1a1a]" : "bg-transparent"
+        scrolled ? "backdrop-blur-md border-b" : "bg-transparent"
       )}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-5 flex items-center justify-between">
@@ -73,6 +76,40 @@ export function Nav({ isAdmin, navSettings }: {
               {link.label}
             </Link>
           ))}
+
+          {/* Theme + 3D toggles */}
+          <div className="flex items-center gap-1 border border-[#2a2a2a] rounded-full p-0.5">
+            <button
+              onClick={() => setTheme("dark")}
+              title="Dark theme"
+              className={clsx(
+                "p-1.5 rounded-full transition-all",
+                theme === "dark" ? "bg-white text-black" : "text-[#555] hover:text-white"
+              )}
+            >
+              <Moon size={12} />
+            </button>
+            <button
+              onClick={() => setTheme("cream")}
+              title="Cream theme"
+              className={clsx(
+                "p-1.5 rounded-full transition-all",
+                theme === "cream" ? "bg-[#f5efe2] text-[#1a1208]" : "text-[#555] hover:text-[#f5efe2]"
+              )}
+            >
+              <Sun size={12} />
+            </button>
+            <button
+              onClick={() => setWebgl(!webgl)}
+              title={webgl ? "Disable 3D" : "Enable 3D"}
+              className={clsx(
+                "p-1.5 rounded-full transition-all",
+                webgl ? "bg-[#c8a96e] text-black" : "text-[#555] hover:text-[#c8a96e]"
+              )}
+            >
+              <Layers size={12} />
+            </button>
+          </div>
 
           {isAdmin && (
             <div className="flex items-center gap-2">

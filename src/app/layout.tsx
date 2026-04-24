@@ -4,6 +4,7 @@ import { GeistMono } from "geist/font/mono";
 import "./globals.css";
 import { Nav } from "@/components/nav";
 import { PageTransition } from "@/components/page-transition";
+import { ClientShell } from "@/components/client-shell";
 import { auth } from "@/auth";
 import { getSiteContent } from "@/app/actions/site-content";
 
@@ -36,8 +37,10 @@ export default async function RootLayout({
   return (
     <html lang="en" className={`${GeistSans.variable} ${GeistMono.variable}`}>
       <body>
-        <Nav isAdmin={isAdmin} navSettings={navSettings} />
-        <PageTransition>{children}</PageTransition>
+        <ClientShell>
+          <Nav isAdmin={isAdmin} navSettings={navSettings} />
+          <PageTransition>{children}</PageTransition>
+        </ClientShell>
       </body>
     </html>
   );

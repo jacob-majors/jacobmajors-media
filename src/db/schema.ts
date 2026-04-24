@@ -24,6 +24,7 @@ export const projects = sqliteTable("projects", {
   liveUrl: text("live_url"),
   cloudinaryId: text("cloudinary_id"),
   cloudinaryUrl: text("cloudinary_url"),
+  stlUrl: text("stl_url"),
   featured: integer("featured", { mode: "boolean" }).default(false),
   publishedAt: text("published_at").default(sql`(datetime('now'))`),
 });

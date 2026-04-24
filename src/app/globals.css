@@ -7,6 +7,27 @@
   --accent: #c8a96e;
   --muted: #666666;
   --border: #1a1a1a;
+  --nav-bg: rgba(10, 10, 10, 0.92);
+  --surface: #111111;
+}
+
+[data-theme="cream"] {
+  --background: #f5efe2;
+  --foreground: #1a1208;
+  --accent: #9b7120;
+  --muted: #7a6a50;
+  --border: #ddd0bc;
+  --nav-bg: rgba(245, 239, 226, 0.92);
+  --surface: #ede6d8;
+}
+
+/* Force page titles to be readable on cream background */
+[data-theme="cream"] main > div > h1,
+[data-theme="cream"] main > div > p {
+  color: var(--foreground);
+}
+[data-theme="cream"] main > div > p.text-\[\#c8a96e\] {
+  color: var(--accent);
 }
 
 * {
@@ -32,6 +53,7 @@ html {
 body {
   background-color: var(--background);
   color: var(--foreground);
+  transition: background-color 0.5s ease, color 0.4s ease;
   font-family: var(--font-geist-sans), system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
